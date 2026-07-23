@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu du Jour</title>
+    <style>
+        /* Réinitialisation de base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #fcf8f2;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* En-tête (Header) */
+        header {
+            background-color: #ff6b00; 
+            color: white;
+            text-align: center;
+            padding: 2rem 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Conteneur principal du menu */
+        .menu-container {
+            flex: 1;
+            max-width: 800px;
+            width: 100%;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .section-title {
+            color: #ff6b00;
+            border-bottom: 2px solid #ff6b00;
+            padding-bottom: 0.5rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            font-size: 1.6rem;
+            letter-spacing: 1px;
+        }
+
+        /* Structure des lignes du menu */
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.4rem;
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            font-family: 'Cooper Black', 'Copper Black', Georgia, serif;
+            text-transform: capitalize; 
+        }
+
+        .item-dots {
+            flex: 1;
+            border-bottom: 1px dotted #ccc;
+            margin: 0 10px;
+        }
+
+        .item-price {
+            font-weight: bold;
+            color: #ff6b00;
+            white-space: nowrap;
+            font-family: 'Cooper Black', 'Copper Black', Georgia, serif;
+        }
+
+        .item-description {
+            font-size: 0.95rem;
+            color: #555;
+            margin-top: 0.1rem;
+            margin-bottom: 1.8rem;
+            font-style: italic;
+            line-height: 14;
+        }
+
+        /* Messages de Statut */
+        .status-message {
+            text-align: center;
+            font-size: 1.2rem;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error-message {
+            color: #d9534f;
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            border-radius: 4px;
+            margin: 2rem auto;
+            max-width: 600px;
+        }
+
+        /* Pied de page */
+        footer {
+            background-color: #222;
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: auto;
+        }
+
+        footer p {
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>MENU DU JOUR</h1>
+    </header>
+
+    <main class="menu-container">
+        <div id="status-zone" class="status-message">Chargement des plats en cuisine... 🍳</div>
+        <div id="menu-content" style="display: none;"></div>
+    </main>
+
+    <footer>
+        <p>NOUS VOUS SOUHAITONS BON APPÉTIT</p>
+    </footer>
+
+<script>
+    (function() {
+        const GITHUB_API_URL = "https://api.github.com/repos/alasco-27/menu_restau/contents/menu.json";
+        const RAW_FALLBACK_URL = "https://raw.githubusercontent.com/alasco-27/menu_restau/main/menu.json";
+        const REFRESH_INTERVAL = 30000;
+
+        let menuCache = localStorage.getItem('menuCache') || "";
+        let rafraichissementAutorise = true; 
+        let intervalId = null;
+
+        // Échappement HTML sécurisé
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        if (menuCache) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const content = document.getElementById('menu-content');
+                const status = document.getElementById('status-zone');
+                if (content && status) {
+                    content.innerHTML = menuCache;
+                    content.style.display = "block";
+                    status.style.display = "none";
+                }
+            });
+        }
+
+        function decodeBase64UTF8(str) {
+            return decodeURIComponent(
+                atob(str).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join('')
+            );
+        }
+
+        async function chargerMenu() {
+            if (!rafraichissementAutorise) return;
+
+            const statusZone = document.getElementById('status-zone');
+            const menuContent = document.getElementById('menu-content');
+
+            try {
+                let data;
+
+                try {
+                    const response = await fetch(`${GITHUB_API_URL}?t=${Date.now()}`, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/vnd.github.v3+json' },
+                        cache: 'no-store'
+                    });
+
+                    if (response.ok) {
+                        const dataApi = await response.json();
+                        const contenuJsonTexte = decodeBase64UTF8(dataApi.content.replace(/\n/g, ''));
+                        data = JSON.parse(contenuJsonTexte);
+                    } else {
+                        throw new Error();
+                    }
+                } catch {
+                    const fallbackResponse = await fetch(`${RAW_FALLBACK_URL}?t=${Date.now()}`, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store'
+                    });
+                    if (!fallbackResponse.ok) throw new Error();
+                    data = await fallbackResponse.json();
+                }
+
+                const menuData = Array.isArray(data) && data.length > 0 ? data[0] : data;
+                const menuObject = menuData.menu || menuData;
+
+                const categoriesMap = {
+                    "NOS PLATS": menuObject.plats || [],
+                    "EAUX": menuObject.eaux || [],
+                    "BOISSONS": menuObject.boissons || [],
+                    "CAFÉ": menuObject.cafes || menuObject.cafés || []
+                };
+
+                let HTMLFinal = "";
+                let aAuMoinsUnArticle = false;
+
+                for (const [titreCategorie, listeElements] of Object.entries(categoriesMap)) {
+                    if (Array.isArray(listeElements) && listeElements.length > 0) {
+                        aAuMoinsUnArticle = true;
+                        HTMLFinal += `<h2 class="section-title">${escapeHtml(titreCategorie)}</h2>`;
+                        
+                        listeElements.forEach(elt => {
+                            let prixAffiche = "Prix sur demande";
+                            if (elt.prix !== undefined && elt.prix !== null && elt.prix !== "") {
+                                prixAffiche = typeof elt.prix === 'number'
+                                    ? `${elt.prix.toLocaleString('fr-FR')} FCFA`
+                                    : `${escapeHtml(elt.prix)} FCFA`;
+                            }
+
+                            HTMLFinal += `
+                                <div class="menu-item">
+                                    <span class="item-name">${escapeHtml(elt.nom || 'Élément')}</span>
+                                    <span class="item-dots"></span>
+                                    <span class="item-price">${prixAffiche}</span>
+                                </div>
+                                <p class="item-description">${escapeHtml(elt.description || '')}</p>
+                            `;
+                        });
+                    }
+                }
+
+                if (aAuMoinsUnArticle) {
+                    if (menuCache !== HTMLFinal) {
+                        menuCache = HTMLFinal;
+                        try { localStorage.setItem('menuCache', HTMLFinal); } catch(e) {}
+                        menuContent.innerHTML = HTMLFinal;
+                    }
+                    menuContent.style.display = "block";
+                    statusZone.style.display = "none";
+                } else {
+                    statusZone.innerHTML = "Le menu est vide pour le moment. 📝";
+                    statusZone.className = "status-message";
+                    statusZone.style.display = "block";
+                    menuContent.style.display = "none";
+                }
+
+            } catch {
+                if (menuCache) {
+                    statusZone.style.display = "none";
+                    menuContent.style.display = "block";
+                } else {
+                    statusZone.innerHTML = "⚠️ Service temporairement indisponible. Nouvelle tentative dans un instant...";
+                    statusZone.className = "status-message error-message";
+                    statusZone.style.display = "block";
+                    menuContent.style.display = "none";
+                }
+            }
+        }
+
+        function lancerLigneDeTemps() {
+            if (intervalId) clearInterval(intervalId);
+            intervalId = setInterval(chargerMenu, REFRESH_INTERVAL);
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                rafraichissementAutorise = false;
+                clearInterval(intervalId);
+            } else {
+                rafraichissementAutorise = true;
+                chargerMenu();
+                lancerLigneDeTemps();
+            }
+        });
+
+        chargerMenu();
+        lancerLigneDeTemps();
+    })();
+</script>
+</body>
+</html>
