@@ -69,6 +69,8 @@
             font-size: 1.2rem;
             font-family: 'Cooper Black', 'Copper Black', Georgia, serif;
             text-transform: capitalize; 
+            max-width: 60%;
+            word-break: break-word;
         }
 
         .item-dots {
@@ -87,10 +89,10 @@
         .item-description {
             font-size: 0.95rem;
             color: #555;
-            margin-top: 0.1rem;
-            margin-bottom: 1.8rem;
+            margin-top: 0.2rem;
+            margin-bottom: 1.5rem;
             font-style: italic;
-            line-height: 14;
+            line-height: 1.4; /* Correctif clé : 1.4 au lieu de 14 */
         }
 
         /* Messages de Statut */
@@ -151,7 +153,6 @@
         let rafraichissementAutorise = true; 
         let intervalId = null;
 
-        // Échappement HTML sécurisé
         function escapeHtml(str) {
             if (!str) return '';
             return String(str)
@@ -247,7 +248,7 @@
                                     <span class="item-dots"></span>
                                     <span class="item-price">${prixAffiche}</span>
                                 </div>
-                                <p class="item-description">${escapeHtml(elt.description || '')}</p>
+                                ${elt.description ? `<p class="item-description">${escapeHtml(elt.description)}</p>` : ''}
                             `;
                         });
                     }
